@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="th">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ทดสอบโมเดล AI</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; margin-top: 50px; }
+        #label-container { margin-top: 20px; font-size: 20px; font-weight: bold; }
+        img { max-width: 90%; max-height: 400px; height: auto; margin-top: 20px; border: 1px solid #ddd; padding: 5px; }
+    </style>
+</head>
+<body>
+    <h1>ทดสอบโมเดลจำแนกรูปภาพ</h1>
+    <p>อัปโหลดภาพเพื่อทดสอบกับโมเดล AI ของคุณ</p>
+
+    <input type="file" id="image-upload" accept="image/*" />
+
+    <div>
+        <img id="image-preview" src="" alt="กรุณาอัปโหลดรูปภาพ..."/>
+    </div>
+
+    <div id="label-container"></div>
+
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+    <script>
+        // ✅ 1. ใส่ลิงก์โมเดลของคุณที่นี่
+        const URL = "https://teachablemachine.withgoogle.com/models/YOUR_MODEL_ID/"; // <<<< แก้ไขบรรทัดนี้
+
+        let model, labelContainer, maxPredictions;
+
+        // 2. ฟังก์ชันโหลดโมเดลและเตรียมความพร้อม
+        async function init() {
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+
+            model = await tmImage.load(modelURL, metadataURL);
+            maxPredictions = model.getTotalClasses();
+
+            labelContainer = document.getElementById("label-container");
+            for (let i = 0; i < maxPredictions; i++) {
+                labelContainer.appendChild(document.createElement("div"));
+            }
+            
+            // เมื่อโหลดเสร็จ อาจจะแสดงข้อความบอกผู้ใช้
+            document.getElementById("image-preview").alt = "โมเดลพร้อมแล้ว! กรุณาอัปโหลดรูปภาพ";
+        }
+
+        // 3. จัดการเมื่อมีการอัปโหลดรูปภาพ
+        const imageUpload = document.getElementById("image-upload");
+        const imagePreview = document.getElementById("image-preview");
+
+        imageUpload.addEventListener("change", async (event) => {
+            const file = event.target.files[0];
+            if (file) {
+                // เคลียร์ผลลัพธ์เก่า
+                labelContainer.innerHTML = "";
+                for (let i = 0; i < maxPredictions; i++) {
+                    labelContainer.appendChild(document.createElement("div"));
+                }
+                
+                const reader = new FileReader();
+                reader.onload = (e) => {
+                    imagePreview.src = e.target.result;
+                    setTimeout(() => predict(), 100);
+                };
+                reader.readAsDataURL(file);
+            }
+        });
+
+        // 4. ฟังก์ชันทำนายผลจากภาพ
+        async function predict() {
+            const prediction = await model.predict(imagePreview);
+            for (let i = 0; i < maxPredictions; i++) {
+                const classPrediction =
+                    prediction[i].className + ": " + (prediction[i].probability * 100).toFixed(2) + "%";
+                labelContainer.childNodes[i].innerHTML = classPrediction;
+            }
+        }
+
+        // เรียกใช้ฟังก์ชัน init() เพื่อเริ่มโหลดโมเดลทันที
+        init();
+    </script>
+
+</body>
+</html>
