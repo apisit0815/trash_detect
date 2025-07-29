@@ -3,68 +3,71 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ทดสอบโมเดล AI</title>
+    <title>ทดสอบโมเดล AI (ฉบับแก้ไข)</title>
     <style>
-        body { font-family: sans-serif; text-align: center; margin-top: 50px; }
-        #label-container { margin-top: 20px; font-size: 20px; font-weight: bold; }
-        img { max-width: 90%; max-height: 400px; height: auto; margin-top: 20px; border: 1px solid #ddd; padding: 5px; }
+        body { font-family: sans-serif; text-align: center; margin-top: 40px; background-color: #f7f7f7; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        #status { margin: 20px 0; font-size: 18px; font-weight: bold; }
+        .error { color: red; }
+        #label-container { margin-top: 20px; font-size: 20px; }
+        img { max-width: 100%; max-height: 400px; height: auto; margin-top: 20px; border-radius: 4px; }
+        input[type="file"] { border: 1px solid #ccc; display: inline-block; padding: 6px 12px; cursor: pointer; }
     </style>
 </head>
 <body>
-    <h1>ทดสอบโมเดลจำแนกรูปภาพ</h1>
-    <p>อัปโหลดภาพเพื่อทดสอบกับโมเดล AI ของคุณ</p>
+    <div class="container">
+        <h1>ทดสอบโมเดลจำแนกภาพขยะ</h1>
+        
+        <div id="status">กำลังเริ่มต้น...</div>
 
-    <input type="file" id="image-upload" accept="image/*" />
+        <input type="file" id="image-upload" accept="image/*" disabled/>
 
-    <div>
-        <img id="image-preview" src="" alt="กรุณาอัปโหลดรูปภาพ..."/>
+        <div>
+            <img id="image-preview" src="" />
+        </div>
+
+        <div id="label-container"></div>
     </div>
-
-    <div id="label-container"></div>
 
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 
     <script>
-        // ✅ 1. ใส่ลิงก์โมเดลของคุณที่นี่
-        const URL = "https://teachablemachine.withgoogle.com/models/YOUR_MODEL_ID/"; // <<<< แก้ไขบรรทัดนี้
+        // ✅ 1. ตรวจสอบให้แน่ใจว่าใส่ลิงก์โมเดลที่ถูกต้องและคัดลอกมาครบถ้วน
+        const URL = "https://teachablemachine.withgoogle.com/models/[...]"; // <<<< แก้ไขบรรทัดนี้ให้เป็นลิงก์ของคุณ
 
-        let model, labelContainer, maxPredictions;
+        let model, maxPredictions;
+        const statusDiv = document.getElementById("status");
+        const imageUpload = document.getElementById("image-upload");
+        const imagePreview = document.getElementById("image-preview");
+        const labelContainer = document.getElementById("label-container");
 
-        // 2. ฟังก์ชันโหลดโมเดลและเตรียมความพร้อม
+        // 2. ฟังก์ชันโหลดโมเดลพร้อมการจัดการ Error
         async function init() {
             const modelURL = URL + "model.json";
             const metadataURL = URL + "metadata.json";
-
-            model = await tmImage.load(modelURL, metadataURL);
-            maxPredictions = model.getTotalClasses();
-
-            labelContainer = document.getElementById("label-container");
-            for (let i = 0; i < maxPredictions; i++) {
-                labelContainer.appendChild(document.createElement("div"));
-            }
             
-            // เมื่อโหลดเสร็จ อาจจะแสดงข้อความบอกผู้ใช้
-            document.getElementById("image-preview").alt = "โมเดลพร้อมแล้ว! กรุณาอัปโหลดรูปภาพ";
+            statusDiv.innerHTML = "กำลังโหลดโมเดล...";
+            try {
+                model = await tmImage.load(modelURL, metadataURL);
+                maxPredictions = model.getTotalClasses();
+                statusDiv.innerHTML = "โมเดลพร้อมใช้งาน";
+                imageUpload.disabled = false; // เปิดปุ่มอัปโหลดเมื่อโมเดลพร้อม
+            } catch (e) {
+                console.error(e);
+                statusDiv.innerHTML = "เกิดข้อผิดพลาด: ไม่สามารถโหลดโมเดลได้ <br>กรุณาตรวจสอบ URL หรือการเชื่อมต่ออินเทอร์เน็ต";
+                statusDiv.classList.add("error");
+            }
         }
 
         // 3. จัดการเมื่อมีการอัปโหลดรูปภาพ
-        const imageUpload = document.getElementById("image-upload");
-        const imagePreview = document.getElementById("image-preview");
-
         imageUpload.addEventListener("change", async (event) => {
-            const file = event.target.files[0];
-            if (file) {
-                // เคลียร์ผลลัพธ์เก่า
-                labelContainer.innerHTML = "";
-                for (let i = 0; i < maxPredictions; i++) {
-                    labelContainer.appendChild(document.createElement("div"));
-                }
-                
+            if (event.target.files.length > 0) {
+                const file = event.target.files[0];
                 const reader = new FileReader();
                 reader.onload = (e) => {
                     imagePreview.src = e.target.result;
-                    setTimeout(() => predict(), 100);
+                    predict(); // เรียกใช้ฟังก์ชันทำนายผล
                 };
                 reader.readAsDataURL(file);
             }
@@ -72,17 +75,35 @@
 
         // 4. ฟังก์ชันทำนายผลจากภาพ
         async function predict() {
-            const prediction = await model.predict(imagePreview);
-            for (let i = 0; i < maxPredictions; i++) {
-                const classPrediction =
-                    prediction[i].className + ": " + (prediction[i].probability * 100).toFixed(2) + "%";
-                labelContainer.childNodes[i].innerHTML = classPrediction;
+            if (!model) {
+                statusDiv.innerHTML = "ข้อผิดพลาด: โมเดลยังไม่ถูกโหลด";
+                statusDiv.classList.add("error");
+                return;
+            }
+
+            labelContainer.innerHTML = ""; // เคลียร์ผลลัพธ์เก่า
+            statusDiv.innerHTML = "กำลังวิเคราะห์...";
+            statusDiv.classList.remove("error");
+
+            try {
+                const prediction = await model.predict(imagePreview);
+                for (let i = 0; i < maxPredictions; i++) {
+                    const classPrediction =
+                        prediction[i].className + ": " + (prediction[i].probability * 100).toFixed(2) + "%";
+                    const div = document.createElement("div");
+                    div.innerHTML = classPrediction;
+                    labelContainer.appendChild(div);
+                }
+                statusDiv.innerHTML = "เลือกภาพใหม่เพื่อทดสอบอีกครั้ง";
+            } catch (e) {
+                console.error(e);
+                statusDiv.innerHTML = "เกิดข้อผิดพลาดระหว่างการทำนายผล";
+                statusDiv.classList.add("error");
             }
         }
 
-        // เรียกใช้ฟังก์ชัน init() เพื่อเริ่มโหลดโมเดลทันที
+        // เริ่มต้นโหลดโมเดลทันที
         init();
     </script>
-
 </body>
 </html>
