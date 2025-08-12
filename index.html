@@ -1,116 +1,313 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ทดสอบโมเดล AI</title>
-    <style>
-        body { font-family: sans-serif; text-align: center; margin-top: 40px; background-color: #f7f7f7; }
-        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        #status { margin: 20px 0; font-size: 18px; font-weight: bold; }
-        .error { color: red; }
-        #label-container { margin-top: 20px; font-size: 20px; }
-        img { max-width: 100%; max-height: 400px; height: auto; margin-top: 20px; border-radius: 4px; }
-        input[type="file"] { border: 1px solid #ccc; display: inline-block; padding: 6px 12px; cursor: pointer; }
-    </style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>ทดสอบโมเดลจำแนกรูปขยะ – ฉบับใช้งานง่ายสำหรับนักเรียน</title>
+  <!-- Google Font for Thai -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+  <style>
+    :root{
+      --bg:#f6f7fb;           /* พื้นหลังนุ่มตา */
+      --card:#ffffff;          /* การ์ด */
+      --text:#1f2937;          /* ตัวอักษรหลัก */
+      --muted:#64748b;         /* ตัวอักษรรอง */
+      --brand:#2563eb;         /* สีหลัก */
+      --brand-2:#22c55e;       /* สีรอง */
+      --danger:#ef4444;        /* สีแจ้งเตือน */
+      --shadow: 0 10px 30px rgba(2,6,23,0.08);
+      --radius: 16px;
+    }
+    *{ box-sizing: border-box; }
+    html, body{ height: 100%; }
+    body{
+      margin: 0; background: var(--bg); color: var(--text);
+      font-family: 'Noto Sans Thai', ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, "Helvetica Neue", Arial, "Noto Sans", sans-serif;
+    }
+    .container{ max-width: 980px; margin: 0 auto; padding: 20px; }
+
+    /* Header */
+    .app-header{
+      background: linear-gradient(135deg, #60a5fa, #22c55e);
+      color: white; padding: 28px 0 56px; position: relative; overflow: hidden;
+    }
+    .app-header .container{ position: relative; z-index: 1; }
+    .title{ font-size: clamp(20px, 3.8vw, 36px); margin: 0 0 8px; font-weight: 700; }
+    .subtitle{ margin: 0; opacity: .95; font-size: clamp(14px, 2.2vw, 18px); }
+    .wave{
+      position: absolute; left:0; right:0; bottom:-1px; height: 40px;
+      background: url('data:image/svg+xml;utf8,<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1440 320"><path fill="%23f6f7fb" d="M0,128L60,112C120,96,240,64,360,64C480,64,600,96,720,133.3C840,171,960,213,1080,229.3C1200,245,1320,235,1380,229.3L1440,224L1440,320L1380,320C1320,320,1200,320,1080,320C960,320,840,320,720,320C600,320,480,320,360,320C240,320,120,320,60,320L0,320Z"></path></svg>') no-repeat center/cover;
+    }
+
+    /* Card */
+    .card{ background: var(--card); box-shadow: var(--shadow); border-radius: var(--radius); padding: 20px; }
+
+    /* Steps */
+    .steps{ display: grid; grid-template-columns: 1fr; gap: 12px; margin: -40px 0 18px; }
+    .step{ background: var(--card); border-radius: 12px; padding: 12px 14px; box-shadow: var(--shadow); display: flex; gap: 10px; align-items: center; }
+    .step-badge{ width: 30px; height: 30px; border-radius: 50%; background: #1e293b; color: #fff; display: grid; place-items: center; font-weight: 700; font-size: 14px; }
+    .step p{ margin: 0; color: var(--muted); font-size: 14px; }
+
+    @media (min-width:720px){ .steps{ grid-template-columns: repeat(3,1fr); } }
+
+    /* Uploader */
+    .uploader{ display: grid; gap: 16px; }
+    .dropzone{
+      border: 2px dashed #cbd5e1; border-radius: 14px; padding: 16px; background: #fff; text-align: center; transition: .2s ease;
+    }
+    .dropzone.dragover{ border-color: var(--brand); background: #eff6ff; }
+    .dz-title{ font-weight: 600; margin: 6px 0 6px; }
+    .dz-desc{ color: var(--muted); margin: 0; font-size: 14px; }
+
+    .actions{ display: flex; flex-wrap: wrap; gap: 10px; justify-content: center; }
+    .btn{ appearance: none; border: 0; border-radius: 12px; padding: 12px 16px; font-weight: 600; cursor: pointer; transition: transform .04s ease, filter .2s ease; }
+    .btn:active{ transform: translateY(1px); }
+    .btn-primary{ background: var(--brand); color:#fff; }
+    .btn-secondary{ background: #e2e8f0; color:#0f172a; }
+    .btn-danger{ background: var(--danger); color:#fff; }
+    .btn:disabled{ filter: grayscale(1) brightness(.9); cursor: not-allowed; }
+
+    .status{ display: flex; gap: 10px; align-items: center; justify-content: center; margin: 8px 0 2px; min-height: 28px; font-weight: 600; color:#0f172a; }
+    .spinner{ width: 16px; height: 16px; border: 3px solid #e2e8f0; border-top-color: #2563eb; border-radius: 50%; animation: spin 1s linear infinite; }
+    @keyframes spin{ to{ transform: rotate(360deg); } }
+    .status.error{ color: var(--danger); }
+    .status.ready{ color: var(--brand-2); }
+
+    /* Preview & Results */
+    .grid{ display: grid; gap: 16px; grid-template-columns: 1fr; }
+    @media (min-width:920px){ .grid{ grid-template-columns: 1.1fr .9fr; align-items: start; } }
+
+    .preview{ background:#fff; border-radius: 14px; padding: 12px; box-shadow: var(--shadow); }
+    .preview img{ width: 100%; max-height: 420px; object-fit: contain; border-radius: 10px; background: #f1f5f9; }
+
+    .results{ background:#fff; border-radius: 14px; padding: 12px; box-shadow: var(--shadow); }
+    .results h3{ margin: 6px 0 12px; font-size: 18px; }
+
+    .pred{ display: grid; grid-template-columns: 1fr auto; align-items: center; gap: 8px; margin: 10px 0; }
+    .pred .label{ font-weight: 600; }
+    .pred .percent{ font-feature-settings: "tnum" 1, "lnum" 1; font-variant-numeric: tabular-nums; min-width: 64px; text-align: right; }
+    .bar{ position: relative; height: 12px; background: #e2e8f0; border-radius: 999px; overflow: hidden; }
+    .bar > span{ position: absolute; left: 0; top: 0; bottom: 0; width: 0%; background: linear-gradient(90deg, #60a5fa, #22c55e); transition: width .6s ease; }
+
+    .badge-top{ display: inline-flex; align-items: center; gap: 6px; background: #dcfce7; color:#166534; border: 1px solid #bbf7d0; padding: 6px 10px; border-radius: 999px; font-weight: 700; font-size: 13px; }
+
+    .footer{ text-align: center; color: var(--muted); font-size: 13px; margin: 20px 0 40px; }
+
+    /* Accessibility helpers */
+    [aria-live]{ outline: none; }
+  </style>
 </head>
 <body>
-    <div class="container">
-        <h1>โปรแกรมทดสอบโมเดลจำแนกรูปขยะ</h1>
-        
-                <p>
-            **คำชี้แจง:** โปรแกรมนี้ใช้สำหรับตรวจจับและแยกประเภทขยะออกเป็น **Recycle**, **Organic**, **General**, **Hazardous** และ **ไม่ทราบ (Null or Background)**
-        </p>
-        <p>
-            โปรดเลือกภาพขยะ (ชนิดไฟล์ JPG, JPEG, PNG) ที่ต้องการทดสอบ
-        </p>
-                <div id="status">กำลังเริ่มต้น...</div>
-        <input type="file" id="image-upload" accept="image/jpeg, image/png, image/jpg" disabled/>
+  <header class="app-header" role="banner">
+    <div class="container">
+      <h1 class="title">โปรแกรมทดสอบโมเดลจำแนกรูปขยะ</h1>
+      <p class="subtitle">อัปโหลดหรือถ่ายรูป → ให้ AI วิเคราะห์ → เรียนรู้การจัดการขยะอย่างสร้างสรรค์</p>
+    </div>
+    <div class="wave" aria-hidden="true"></div>
+  </header>
 
-        <div>
-            <img id="image-preview" src="" />
-        </div>
+  <main class="container" role="main">
+    <!-- Steps (friendly guidance for students) -->
+    <section class="steps" aria-label="ขั้นตอนการใช้งาน">
+      <div class="step">
+        <div class="step-badge">1</div>
+        <p><strong>เตรียมภาพ</strong> ขยะชิ้นเดียวให้ชัดเจน (ไฟล์ JPG/PNG)</p>
+      </div>
+      <div class="step">
+        <div class="step-badge">2</div>
+        <p><strong>อัปโหลด/ถ่ายรูป</strong> จากปุ่มด้านล่างหรือวางไฟล์ลงในช่อง</p>
+      </div>
+      <div class="step">
+        <div class="step-badge">3</div>
+        <p><strong>ดูผลลัพธ์</strong> ระบบจะแสดงเปอร์เซ็นต์ความมั่นใจของแต่ละประเภท</p>
+      </div>
+    </section>
 
-        <div id="label-container"></div>
-    </div>
+    <section class="card uploader" aria-labelledby="uploader-title">
+      <h2 id="uploader-title" style="margin:0 0 6px; font-size:20px;">อัปโหลด/ถ่ายรูป</h2>
 
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+      <div id="status" class="status" role="status" aria-live="polite">
+        <div class="spinner" aria-hidden="true"></div>
+        <span>กำลังโหลดโมเดล…</span>
+      </div>
 
-    <script>
-        const URL = "https://teachablemachine.withgoogle.com/models/kOI6h0QV-/"; // <<<< ใส่ลิงก์โมเดลของคุณที่นี่
+      <div id="dropzone" class="dropzone" tabindex="0" aria-label="วางไฟล์ภาพที่นี่หรือใช้ปุ่มเพื่อเลือกไฟล์">
+        <p class="dz-title">ลาก & วางไฟล์ภาพที่นี่</p>
+        <p class="dz-desc">หรือใช้ปุ่มด้านล่างเพื่อเลือกไฟล์ / ถ่ายรูปด้วยกล้อง</p>
+      </div>
 
-        let model, maxPredictions;
-        const statusDiv = document.getElementById("status");
-        const imageUpload = document.getElementById("image-upload");
-        const imagePreview = document.getElementById("image-preview");
-        const labelContainer = document.getElementById("label-container");
+      <div class="actions">
+        <button id="btn-file" class="btn btn-primary" disabled>เลือกภาพจากเครื่อง</button>
+        <button id="btn-camera" class="btn btn-secondary" disabled>ใช้กล้องถ่ายภาพ</button>
+        <button id="btn-clear" class="btn btn-danger" disabled>ล้างผลลัพธ์</button>
+      </div>
 
-        async function init() {
-            const modelURL = URL + "model.json";
-            const metadataURL = URL + "metadata.json";
-            
-            statusDiv.innerHTML = "กำลังโหลดโมเดล...";
-            try {
-                model = await tmImage.load(modelURL, metadataURL);
-                maxPredictions = model.getTotalClasses();
-                statusDiv.innerHTML = "โมเดลพร้อมใช้งาน";
-                imageUpload.disabled = false;
-            } catch (e) {
-                console.error(e);
-                statusDiv.innerHTML = "เกิดข้อผิดพลาด: ไม่สามารถโหลดโมเดลได้";
-                statusDiv.classList.add("error");
-            }
-        }
-        
-        // ✅ **จุดที่แก้ไขสำคัญ**
-        // เราจะบอกให้โปรแกรมรู้ว่า "เมื่อไหร่ก็ตามที่รูปภาพใน imagePreview โหลดเสร็จ ให้เรียกฟังก์ชัน predict"
-        imagePreview.onload = () => {
-            // เมื่อภาพโหลดเสร็จ ก็พร้อมที่จะทำนายผล
-            predict();
-        };
+      <!-- ซ่อน input ตัวจริง แต่เข้าถึงได้ด้วยปุ่ม -->
+      <input id="file-input" type="file" accept="image/jpeg,image/png,image/jpg,image/*" capture="environment" style="position:absolute; left:-9999px; width:1px; height:1px;" />
+    </section>
 
-        // จัดการเมื่อมีการอัปโหลดรูปภาพ
-        imageUpload.addEventListener("change", async (event) => {
-            if (event.target.files.length > 0) {
-                const file = event.target.files[0];
-                const reader = new FileReader();
-                
-                reader.onload = (e) => {
-                    // แค่กำหนดแหล่งที่มาของภาพใหม่ แล้ว Event 'onload' ของภาพจะทำงานต่อเอง
-                    imagePreview.src = e.target.result; 
-                };
-                
-                reader.readAsDataURL(file);
-            }
-        });
+    <section class="grid" style="margin-top:18px;">
+      <div class="preview" aria-labelledby="preview-title">
+        <h2 id="preview-title" style="margin:4px 0 10px; font-size:18px;">ภาพตัวอย่าง</h2>
+        <img id="image-preview" alt="ตัวอย่างภาพที่จะวิเคราะห์" />
+      </div>
 
-        // ฟังก์ชันทำนายผล (เหมือนเดิม แต่จะถูกเรียกในจังหวะที่ถูกต้อง)
-        async function predict() {
-            if (!model) return;
+      <div class="results" aria-labelledby="results-title">
+        <div style="display:flex; align-items:center; justify-content:space-between; gap:10px;">
+          <h3 id="results-title" style="margin:4px 0;">ผลการวิเคราะห์</h3>
+          <div id="top-badge" aria-live="polite"></div>
+        </div>
+        <div id="label-container" aria-live="polite"></div>
+      </div>
+    </section>
 
-            labelContainer.innerHTML = "";
-            statusDiv.innerHTML = "กำลังวิเคราะห์...";
-            statusDiv.classList.remove("error");
+    <p class="footer">หมายเหตุ: ประเภทที่ใช้คือ <strong>Recycle</strong>, <strong>Organic</strong>, <strong>General</strong>, <strong>Hazardous</strong>, และ <strong>Null/Background</strong></p>
+  </main>
 
-            try {
-                const prediction = await model.predict(imagePreview);
-                for (let i = 0; i < maxPredictions; i++) {
-                    const classPrediction =
-                        prediction[i].className + ": " + (prediction[i].probability * 100).toFixed(2) + "%";
-                    const div = document.createElement("div");
-                    div.innerHTML = classPrediction;
-                    labelContainer.appendChild(div);
-                }
-                statusDiv.innerHTML = "เลือกภาพใหม่เพื่อทดสอบอีกครั้ง";
-            } catch (e) {
-                console.error(e);
-                statusDiv.innerHTML = "เกิดข้อผิดพลาดระหว่างการทำนายผล";
-                statusDiv.classList.add("error");
-            }
-        }
+  <footer class="footer" role="contentinfo">
+    สร้างด้วย Teachable Machine + TensorFlow.js | ออกแบบเพื่อการเรียนรู้ของนักเรียนมัธยมต้น
+  </footer>
 
-        init();
-    </script>
+  <!-- Dependencies -->
+  <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+
+  <script>
+    // ====== CONFIG ======
+    // ใส่ลิงก์โมเดลของคุณ (ลงท้ายด้วย / ) เช่น https://teachablemachine.withgoogle.com/models/XXXXXX/
+    const URL = "https://teachablemachine.withgoogle.com/models/kOI6h0QV-/";
+
+    // ====== State & Elements ======
+    let model, maxPredictions;
+
+    const statusDiv = document.getElementById('status');
+    const dropzone = document.getElementById('dropzone');
+    const fileInput = document.getElementById('file-input');
+    const btnFile = document.getElementById('btn-file');
+    const btnCamera = document.getElementById('btn-camera');
+    const btnClear = document.getElementById('btn-clear');
+    const imagePreview = document.getElementById('image-preview');
+    const labelContainer = document.getElementById('label-container');
+    const topBadge = document.getElementById('top-badge');
+
+    // ====== Helpers ======
+    function setStatus(text, { type = 'info', spinning = false } = {}){
+      statusDiv.classList.remove('error','ready');
+      if(type === 'error') statusDiv.classList.add('error');
+      if(type === 'ready') statusDiv.classList.add('ready');
+      statusDiv.innerHTML = `${spinning ? '<div class="spinner" aria-hidden="true"></div>' : ''}<span>${text}</span>`;
+    }
+
+    function enableControls(enabled){
+      [btnFile, btnCamera, btnClear, fileInput].forEach(el => el.disabled = !enabled);
+    }
+
+    function clearResults(){
+      labelContainer.innerHTML = '';
+      topBadge.innerHTML = '';
+      imagePreview.src = '';
+      btnClear.disabled = true;
+    }
+
+    // ====== Init Model ======
+    async function init(){
+      try{
+        setStatus('กำลังโหลดโมเดล…', { spinning: true });
+        const modelURL = URL + 'model.json';
+        const metadataURL = URL + 'metadata.json';
+        model = await tmImage.load(modelURL, metadataURL);
+        maxPredictions = model.getTotalClasses();
+        setStatus('โมเดลพร้อมใช้งาน ✓', { type: 'ready' });
+        enableControls(true);
+      }catch(err){
+        console.error(err);
+        setStatus('เกิดข้อผิดพลาด: โหลดโมเดลไม่สำเร็จ', { type: 'error' });
+        enableControls(false);
+      }
+    }
+
+    // ====== File Handling ======
+    function handleFiles(files){
+      if(!files || !files.length) return;
+      const file = files[0];
+      const valid = /image\/(jpeg|png|jpg)/.test(file.type) || file.type.startsWith('image/');
+      if(!valid){
+        setStatus('กรุณาเลือกไฟล์รูปภาพ (JPG/PNG)', { type: 'error' });
+        return;
+      }
+      const reader = new FileReader();
+      reader.onload = e => {
+        imagePreview.src = e.target.result; // จะเรียก predict เมื่อรูปโหลดเสร็จ (ดูด้านล่าง)
+        btnClear.disabled = false;
+        setStatus('กำลังเตรียมภาพ…', { spinning: true });
+      };
+      reader.readAsDataURL(file);
+    }
+
+    // Drag & Drop
+    dropzone.addEventListener('dragover', (e)=>{ e.preventDefault(); dropzone.classList.add('dragover'); });
+    dropzone.addEventListener('dragleave', ()=> dropzone.classList.remove('dragover'));
+    dropzone.addEventListener('drop', (e)=>{
+      e.preventDefault(); dropzone.classList.remove('dragover');
+      handleFiles(e.dataTransfer.files);
+    });
+
+    // Keyboard support for dropzone (Enter/Space triggers file dialog)
+    dropzone.addEventListener('keydown', (e)=>{
+      if(e.key === 'Enter' || e.key === ' '){ btnFile.click(); }
+    });
+
+    // Buttons
+    btnFile.addEventListener('click', ()=> fileInput.click());
+    btnCamera.addEventListener('click', ()=> fileInput.click()); // capture="environment" จะเรียกกล้องบนมือถือ
+    btnClear.addEventListener('click', ()=>{ clearResults(); setStatus('พร้อมสำหรับการทดสอบภาพใหม่', { type: 'ready' }); });
+
+    // Hidden input change
+    fileInput.addEventListener('change', (e)=> handleFiles(e.target.files));
+
+    // เมื่อรูปโหลดเสร็จ → ทำนาย
+    imagePreview.onload = () => predict();
+
+    // ====== Predict ======
+    async function predict(){
+      if(!model || !imagePreview.src) return;
+      try{
+        setStatus('กำลังวิเคราะห์…', { spinning: true });
+        labelContainer.innerHTML = '';
+        topBadge.innerHTML = '';
+
+        const prediction = await model.predict(imagePreview);
+        // เรียงจากโอกาสมาก → น้อย
+        prediction.sort((a,b)=> b.probability - a.probability);
+
+        // ป้ายสำหรับคลาสที่เป็นอันดับ 1
+        const top = prediction[0];
+        const topText = `${top.className} (${(top.probability*100).toFixed(1)}%)`;
+        topBadge.innerHTML = `<span class="badge-top" title="ผลลัพธ์ที่มีความมั่นใจสูงสุด">✅ ผลลัพธ์นำ: ${topText}</span>`;
+
+        // แสดงทุกคลาสด้วย progress bar
+        for(const p of prediction){
+          const percent = (p.probability * 100).toFixed(1);
+          const row = document.createElement('div');
+          row.className = 'pred';
+          row.innerHTML = `
+            <div class="label">${p.className}</div>
+            <div class="percent">${percent}%</div>
+            <div class="bar" aria-hidden="true"><span style="width:${percent}%"></span></div>
+          `;
+          labelContainer.appendChild(row);
+        }
+        setStatus('วิเคราะห์เสร็จแล้ว ✓ เลือกภาพใหม่เพื่อทดสอบอีกครั้ง', { type: 'ready' });
+      }catch(err){
+        console.error(err);
+        setStatus('เกิดข้อผิดพลาดระหว่างการทำนายผล', { type: 'error' });
+      }
+    }
+
+    // Start
+    init();
+  </script>
 </body>
 </html>
