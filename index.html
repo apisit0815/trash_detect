@@ -1,110 +1,116 @@
 <!DOCTYPE html>
 <html lang="th">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>ทดสอบโมเดล AI</title>
-    <style>
-        body { font-family: sans-serif; text-align: center; margin-top: 40px; background-color: #f7f7f7; }
-        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
-        #status { margin: 20px 0; font-size: 18px; font-weight: bold; }
-        .error { color: red; }
-        #label-container { margin-top: 20px; font-size: 20px; }
-        img { max-width: 100%; max-height: 400px; height: auto; margin-top: 20px; border-radius: 4px; }
-        input[type="file"] { border: 1px solid #ccc; display: inline-block; padding: 6px 12px; cursor: pointer; }
-    </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ทดสอบโมเดล AI</title>
+    <style>
+        body { font-family: sans-serif; text-align: center; margin-top: 40px; background-color: #f7f7f7; }
+        .container { max-width: 600px; margin: auto; background: white; padding: 20px; border-radius: 8px; box-shadow: 0 2px 10px rgba(0,0,0,0.1); }
+        #status { margin: 20px 0; font-size: 18px; font-weight: bold; }
+        .error { color: red; }
+        #label-container { margin-top: 20px; font-size: 20px; }
+        img { max-width: 100%; max-height: 400px; height: auto; margin-top: 20px; border-radius: 4px; }
+        input[type="file"] { border: 1px solid #ccc; display: inline-block; padding: 6px 12px; cursor: pointer; }
+    </style>
 </head>
 <body>
-    <div class="container">
-        <h1>โปรแกรมทดสอบโมเดลจำแนกรูปขยะ</h1>
-        
-        <div id="status">กำลังเริ่มต้น...</div>
-        <input type="file" id="image-upload" accept="image/*" disabled/>
+    <div class="container">
+        <h1>โปรแกรมทดสอบโมเดลจำแนกรูปขยะ</h1>
+        
+                <p>
+            **คำชี้แจง:** โปรแกรมนี้ใช้สำหรับตรวจจับและแยกประเภทขยะออกเป็น **Recycle**, **Organic**, **General**, **Hazardous** และ **ไม่ทราบ (Null or Background)**
+        </p>
+        <p>
+            โปรดเลือกภาพขยะ (ชนิดไฟล์ JPG, JPEG, PNG) ที่ต้องการทดสอบ
+        </p>
+                <div id="status">กำลังเริ่มต้น...</div>
+        <input type="file" id="image-upload" accept="image/jpeg, image/png, image/jpg" disabled/>
 
-        <div>
-            <img id="image-preview" src="" />
-        </div>
+        <div>
+            <img id="image-preview" src="" />
+        </div>
 
-        <div id="label-container"></div>
-    </div>
+        <div id="label-container"></div>
+    </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs@latest/dist/tf.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@teachablemachine/image@latest/dist/teachablemachine-image.min.js"></script>
 
-    <script>
-        const URL = "https://teachablemachine.withgoogle.com/models/kOI6h0QV-/"; // <<<< ใส่ลิงก์โมเดลของคุณที่นี่
+    <script>
+        const URL = "https://teachablemachine.withgoogle.com/models/kOI6h0QV-/"; // <<<< ใส่ลิงก์โมเดลของคุณที่นี่
 
-        let model, maxPredictions;
-        const statusDiv = document.getElementById("status");
-        const imageUpload = document.getElementById("image-upload");
-        const imagePreview = document.getElementById("image-preview");
-        const labelContainer = document.getElementById("label-container");
+        let model, maxPredictions;
+        const statusDiv = document.getElementById("status");
+        const imageUpload = document.getElementById("image-upload");
+        const imagePreview = document.getElementById("image-preview");
+        const labelContainer = document.getElementById("label-container");
 
-        async function init() {
-            const modelURL = URL + "model.json";
-            const metadataURL = URL + "metadata.json";
-            
-            statusDiv.innerHTML = "กำลังโหลดโมเดล...";
-            try {
-                model = await tmImage.load(modelURL, metadataURL);
-                maxPredictions = model.getTotalClasses();
-                statusDiv.innerHTML = "โมเดลพร้อมใช้งาน";
-                imageUpload.disabled = false;
-            } catch (e) {
-                console.error(e);
-                statusDiv.innerHTML = "เกิดข้อผิดพลาด: ไม่สามารถโหลดโมเดลได้";
-                statusDiv.classList.add("error");
-            }
-        }
-        
-        // ✅ **จุดที่แก้ไขสำคัญ**
-        // เราจะบอกให้โปรแกรมรู้ว่า "เมื่อไหร่ก็ตามที่รูปภาพใน imagePreview โหลดเสร็จ ให้เรียกฟังก์ชัน predict"
-        imagePreview.onload = () => {
-            // เมื่อภาพโหลดเสร็จ ก็พร้อมที่จะทำนายผล
-            predict();
-        };
+        async function init() {
+            const modelURL = URL + "model.json";
+            const metadataURL = URL + "metadata.json";
+            
+            statusDiv.innerHTML = "กำลังโหลดโมเดล...";
+            try {
+                model = await tmImage.load(modelURL, metadataURL);
+                maxPredictions = model.getTotalClasses();
+                statusDiv.innerHTML = "โมเดลพร้อมใช้งาน";
+                imageUpload.disabled = false;
+            } catch (e) {
+                console.error(e);
+                statusDiv.innerHTML = "เกิดข้อผิดพลาด: ไม่สามารถโหลดโมเดลได้";
+                statusDiv.classList.add("error");
+            }
+        }
+        
+        // ✅ **จุดที่แก้ไขสำคัญ**
+        // เราจะบอกให้โปรแกรมรู้ว่า "เมื่อไหร่ก็ตามที่รูปภาพใน imagePreview โหลดเสร็จ ให้เรียกฟังก์ชัน predict"
+        imagePreview.onload = () => {
+            // เมื่อภาพโหลดเสร็จ ก็พร้อมที่จะทำนายผล
+            predict();
+        };
 
-        // จัดการเมื่อมีการอัปโหลดรูปภาพ
-        imageUpload.addEventListener("change", async (event) => {
-            if (event.target.files.length > 0) {
-                const file = event.target.files[0];
-                const reader = new FileReader();
-                
-                reader.onload = (e) => {
-                    // แค่กำหนดแหล่งที่มาของภาพใหม่ แล้ว Event 'onload' ของภาพจะทำงานต่อเอง
-                    imagePreview.src = e.target.result; 
-                };
-                
-                reader.readAsDataURL(file);
-            }
-        });
+        // จัดการเมื่อมีการอัปโหลดรูปภาพ
+        imageUpload.addEventListener("change", async (event) => {
+            if (event.target.files.length > 0) {
+                const file = event.target.files[0];
+                const reader = new FileReader();
+                
+                reader.onload = (e) => {
+                    // แค่กำหนดแหล่งที่มาของภาพใหม่ แล้ว Event 'onload' ของภาพจะทำงานต่อเอง
+                    imagePreview.src = e.target.result; 
+                };
+                
+                reader.readAsDataURL(file);
+            }
+        });
 
-        // ฟังก์ชันทำนายผล (เหมือนเดิม แต่จะถูกเรียกในจังหวะที่ถูกต้อง)
-        async function predict() {
-            if (!model) return;
+        // ฟังก์ชันทำนายผล (เหมือนเดิม แต่จะถูกเรียกในจังหวะที่ถูกต้อง)
+        async function predict() {
+            if (!model) return;
 
-            labelContainer.innerHTML = "";
-            statusDiv.innerHTML = "กำลังวิเคราะห์...";
-            statusDiv.classList.remove("error");
+            labelContainer.innerHTML = "";
+            statusDiv.innerHTML = "กำลังวิเคราะห์...";
+            statusDiv.classList.remove("error");
 
-            try {
-                const prediction = await model.predict(imagePreview);
-                for (let i = 0; i < maxPredictions; i++) {
-                    const classPrediction =
-                        prediction[i].className + ": " + (prediction[i].probability * 100).toFixed(2) + "%";
-                    const div = document.createElement("div");
-                    div.innerHTML = classPrediction;
-                    labelContainer.appendChild(div);
-                }
-                statusDiv.innerHTML = "เลือกภาพใหม่เพื่อทดสอบอีกครั้ง";
-            } catch (e) {
-                console.error(e);
-                statusDiv.innerHTML = "เกิดข้อผิดพลาดระหว่างการทำนายผล";
-                statusDiv.classList.add("error");
-            }
-        }
+            try {
+                const prediction = await model.predict(imagePreview);
+                for (let i = 0; i < maxPredictions; i++) {
+                    const classPrediction =
+                        prediction[i].className + ": " + (prediction[i].probability * 100).toFixed(2) + "%";
+                    const div = document.createElement("div");
+                    div.innerHTML = classPrediction;
+                    labelContainer.appendChild(div);
+                }
+                statusDiv.innerHTML = "เลือกภาพใหม่เพื่อทดสอบอีกครั้ง";
+            } catch (e) {
+                console.error(e);
+                statusDiv.innerHTML = "เกิดข้อผิดพลาดระหว่างการทำนายผล";
+                statusDiv.classList.add("error");
+            }
+        }
 
-        init();
-    </script>
+        init();
+    </script>
 </body>
 </html>
