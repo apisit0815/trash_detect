@@ -39,7 +39,6 @@ body {
     transition: background-color 0.5s, border-color 0.5s;
 }
 
-/* แถบด้านบน */
 .top-bar {
     background: var(--primary); 
     padding: 15px; 
@@ -61,7 +60,6 @@ body {
     text-shadow: 1px 1px 2px #000; 
 }
 
-/* 🌟 ป้ายภารกิจใหม่ 🌟 */
 #mission-board {
     background: #ffeb3b; 
     color: #d32f2f; 
@@ -172,7 +170,6 @@ button:active {
     box-shadow: 0 0 0 rgba(0,0,0,0.3); 
 }
 
-/* ตั้งค่าสีปุ่มแต่ละประเภท */
 .btn-primary { background-color: var(--accent); color: white; width: 100%; font-size: 1.2rem; }
 .btn-primary:hover { background-color: #ff5e78; }
 
@@ -184,7 +181,6 @@ button:active {
 
 .btn-success { background-color: var(--success); color: white; width: 100%; font-size: 1.3rem; animation: pulse 1.5s infinite;}
 
-/* แอนิเมชันต่างๆ */
 @keyframes bounce { 
     0%, 100% { transform: translateY(0); } 
     50% { transform: translateY(-15px); } 
@@ -199,4 +195,15 @@ button:active {
 @keyframes shake { 
     0%, 100% { transform: translateX(0); } 
     25% { transform: translateX(-10px); } 
-    7
+    75% { transform: translateX(10px); } 
+}
+
+.bounce { animation: bounce 2s infinite; }
+.shake { animation: shake 0.5s; }
+.hidden { display: none !important; }
+
+.bg-recycle { background-color: #ffc107 !important; border-color: #ff9800 !important; }
+.bg-organic { background-color: #8bc34a !important; border-color: #4caf50 !important; }
+.bg-hazardous { background-color: #f44336 !important; border-color: #d32f2f !important; }
+.bg-general { background-color: #2196f3 !important; border-color: #1976d2 !important; }
+.bg-win { background-color: #9c27b0 !important; border-color: #6a1b9a !important; }
