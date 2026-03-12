@@ -1,23 +1,36 @@
-// 🚨 สำคัญมาก: นำ Web App URL ของ Google Apps Script มาใส่ในเครื่องหมายคำพูดด้านล่างนี้
+// 🚨 สำคัญมาก: นำ Web App URL ของ Google Apps Script มาใส่ที่นี่
 const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx1pdHOY5ubDDb-FSj3FuOIyOgRlRUloRKH_TCDQjxn85EUtizkwuIWI-BGa-IeWau0ZQ/exec";
 
 let stream;
-let currentFacingMode = 'environment'; // เริ่มต้นด้วยกล้องหลัง
+let currentFacingMode = 'environment';
 let score = 0;
-let combo = 0;
+let isGameActive = false;
 
-// อ้างอิง UI จาก HTML
+// 🎯 กำหนดประเภทภารกิจ
+const missions = [
+    { id: 'recycle', name: 'ขยะรีไซเคิล ♻️' },
+    { id: 'organic', name: 'ขยะอินทรีย์ 🍂' },
+    { id: 'hazardous', name: 'ขยะอันตราย ☠️' },
+    { id: 'general', name: 'ขยะทั่วไป 🗑️' }
+];
+let currentMission = null;
+
+// อ้างอิง UI
 const statusDiv = document.getElementById("status");
 const scoreDisplay = document.getElementById("score");
-const comboBadge = document.getElementById("combo-badge");
 const mascot = document.getElementById("mascot");
 const gameMessage = document.getElementById("game-message");
 const gameContainer = document.querySelector(".game-container");
-const imageUpload = document.getElementById("image-upload");
 const imagePreview = document.getElementById("image-preview");
-const inputOptions = document.getElementById("input-options");
 const cameraContainer = document.getElementById("camera-container");
 const videoPreview = document.getElementById("video-preview");
+
+// ปุ่มควบคุม
+const startGameBtn = document.getElementById("start-game-btn");
+const cameraBtn = document.getElementById("camera-btn");
+const browseBtn = document.getElementById("browse-btn");
+const restartBtn = document.getElementById("restart-btn");
+const imageUpload = document.getElementById("image-upload");
 
 // ---- ระบบเสียงเกม 8-bit ----
 const audioCtx = new (window.AudioContext || window.webkitAudioContext)();
@@ -34,17 +47,57 @@ function playTone(freq, type, duration, vol=0.1) {
 }
 
 const sfx = {
-    coin: () => { playTone(1200, 'sine', 0.1); setTimeout(() => playTone(1600, 'sine', 0.3), 100); },
-    error: () => { playTone(300, 'sawtooth', 0.2); setTimeout(() => playTone(200, 'sawtooth', 0.4), 150); },
+    start: () => { playTone(440, 'square', 0.1); setTimeout(() => playTone(660, 'square', 0.2), 150); }, // เสียงเริ่มเกม
+    coin: () => { playTone(1200, 'sine', 0.1); setTimeout(() => playTone(1600, 'sine', 0.3), 100); }, // เสียงตอบถูก
+    error: () => { playTone(300, 'sawtooth', 0.2); setTimeout(() => playTone(200, 'sawtooth', 0.4), 150); }, // เสียงตอบผิด
     shutter: () => { playTone(800, 'square', 0.05); },
-    click: () => { playTone(600, 'sine', 0.05); }
+    click: () => { playTone(600, 'sine', 0.05); },
+    win: () => { // เสียงชนะเกม
+        playTone(523.25, 'sine', 0.1); setTimeout(() => playTone(659.25, 'sine', 0.1), 100);
+        setTimeout(() => playTone(783.99, 'sine', 0.1), 200); setTimeout(() => playTone(1046.50, 'sine', 0.4), 300);
+    }
 };
 
-// เริ่มต้นระบบ
-function init() {
-    statusDiv.innerHTML = "✨ พร้อมสแกนแล้ว เลือกวิธีใส่รูปเลย!";
-    document.getElementById("camera-btn").addEventListener("click", () => { sfx.click(); startCamera(); });
-    document.getElementById("browse-btn").addEventListener("click", () => { sfx.click(); imageUpload.click(); });
+// 🎮 เริ่มเกมใหม่
+function startGame() {
+    sfx.start();
+    score = 0;
+    isGameActive = true;
+    scoreDisplay.innerText = score;
+    startGameBtn.classList.add("hidden");
+    restartBtn.classList.add("hidden");
+    cameraBtn.classList.remove("hidden");
+    browseBtn.classList.remove("hidden");
+    gameContainer.className = "game-container";
+    
+    setNewMission();
+}
+
+// 🎯 สุ่มภารกิจใหม่
+function setNewMission() {
+    if (!isGameActive) return;
+    const randomIdx = Math.floor(Math.random() * missions.length);
+    currentMission = missions[randomIdx];
+    
+    document.getElementById("current-mission").innerText = `หาภาพ "${currentMission.name}"`;
+    mascot.innerText = "🕵️‍♂️";
+    gameMessage.innerText = `ภารกิจมาแล้ว! รีบไปถ่ายรูป ${currentMission.name} มาให้ฉันดูหน่อย!`;
+    statusDiv.innerHTML = "รอรับภาพถ่าย...";
+}
+
+// 🏆 ฉากจบเกมเมื่อชนะ
+function triggerWinGame() {
+    isGameActive = false;
+    sfx.win();
+    gameContainer.className = "game-container bg-win";
+    mascot.innerText = "👑🎊";
+    gameMessage.innerText = "สุดยอดไปเลยฮีโร่! คุณทำภารกิจสำเร็จ ได้คะแนนทะลุ 50 แต้มแล้ว โลกปลอดภัยเพราะคุณ!";
+    document.getElementById("current-mission").innerText = "🎉 ภารกิจสำเร็จ! 🎉";
+    statusDiv.innerHTML = "YOU WIN!";
+    
+    cameraBtn.classList.add("hidden");
+    browseBtn.classList.add("hidden");
+    restartBtn.classList.remove("hidden"); // โชว์ปุ่มเล่นใหม่
 }
 
 // ระบบกล้อง
@@ -55,13 +108,10 @@ async function startCamera() {
     try {
         stream = await navigator.mediaDevices.getUserMedia(constraints);
         videoPreview.srcObject = stream;
-        inputOptions.classList.add("hidden");
+        cameraBtn.classList.add("hidden"); browseBtn.classList.add("hidden");
         imagePreview.style.display = 'none';
         cameraContainer.style.display = 'flex';
-        statusDiv.innerHTML = "เล็งขยะให้อยู่ตรงกลาง แล้วกดถ่าย!";
-        gameContainer.className = "game-container"; 
-        mascot.innerText = "👀";
-        gameMessage.innerText = "เล็งดีๆ นะฮีโร่!";
+        statusDiv.innerHTML = "เล็งขยะให้ตรงกลางเป้าหมาย!";
     } catch (e) {
         if (currentFacingMode === 'environment') {
             currentFacingMode = 'user';
@@ -72,139 +122,125 @@ async function startCamera() {
     }
 }
 
-// ถ่ายภาพและลดขนาดไฟล์ภาพ
+// ถ่ายภาพ
 function captureImage() {
     sfx.shutter();
     const canvas = document.createElement("canvas");
-    // ลดขนาดภาพลงเพื่อให้ส่งผ่านเน็ตไป GAS ได้รวดเร็วขึ้น
     const scale = Math.min(640 / videoPreview.videoWidth, 1);
     canvas.width = videoPreview.videoWidth * scale; 
     canvas.height = videoPreview.videoHeight * scale;
     canvas.getContext("2d").drawImage(videoPreview, 0, 0, canvas.width, canvas.height);
     
-    // แปลงเป็น base64
     imagePreview.src = canvas.toDataURL("image/jpeg", 0.7);
     imagePreview.style.display = 'block';
     
     if (stream) stream.getTracks().forEach(track => track.stop());
     cameraContainer.style.display = 'none';
-    inputOptions.classList.remove("hidden");
     
-    // เรียกใช้ AI ทันที
     predict(); 
 }
 
-// 🧠 ส่งรูปไปให้ Backend (Google Apps Script) ประมวลผล
+// 🧠 ส่งรูปไปให้ Backend ตรวจสอบความถูกต้อง
 async function predict() {
-    if (GAS_WEB_APP_URL.includes("ใส่_URL") || GAS_WEB_APP_URL === "") {
-        statusDiv.innerHTML = "❌ ลืมใส่ URL ของ Google Apps Script ในไฟล์ script.js ครับ";
-        sfx.error();
-        return;
+    if (GAS_WEB_APP_URL.includes("ใส่_URL")) {
+        alert("❌ ลืมใส่ URL ของ Google Apps Script ในไฟล์ script.js ครับ"); return;
     }
 
-    statusDiv.innerHTML = "📡 กำลังส่งภาพให้ระบบประมวลผล (รอแป๊บนึงนะ)...";
-    mascot.innerText = "🤔";
-    gameMessage.innerText = "อืมมม... ขอเวลาคิดแป๊บนึงนะ!";
-
-    const base64Image = imagePreview.src;
+    statusDiv.innerHTML = "📡 กำลังให้ AI ตรวจสอบว่าตรงกับภารกิจไหม...";
+    mascot.innerText = "🧐";
+    gameMessage.innerText = "กำลังตรวจดูให้ ถ่ายมาถูกประเภทไหมน้า...";
 
     try {
-        // ส่งข้อมูลไปที่ Google Apps Script
         const response = await fetch(GAS_WEB_APP_URL, {
             method: "POST",
-            headers: {
-                // ใช้ text/plain เพื่อป้องกันปัญหา CORS Policy ข้ามโดเมน
-                "Content-Type": "text/plain;charset=utf-8", 
-            },
-            body: JSON.stringify({ image: base64Image })
+            headers: { "Content-Type": "text/plain;charset=utf-8" },
+            body: JSON.stringify({ image: imagePreview.src })
         });
 
         const data = await response.json();
-        
-        if (data.error) {
-            throw new Error(data.error.message || data.error);
-        }
+        if (data.error) throw new Error(data.error.message || data.error);
 
-        // ดึงคำตอบของ AI จากชุดข้อมูลที่ Google Apps Script ส่งกลับมา
         const aiAnswer = data.choices[0].message.content.trim().toLowerCase();
         
-        gameContainer.className = "game-container"; 
-        let earnedPoints = 10;
-
-        // แยกแยะคำตอบและแสดงผล
+        // ⚖️ กติกาเกม: เช็คว่าคำตอบ AI ตรงกับภารกิจหรือไม่
         if (aiAnswer.includes("null")) {
+            // ไม่ใช่ขยะ
             mascot.innerText = "❓";
-            gameMessage.innerText = "เอ๊ะ! นี่ไม่ใช่ขยะนี่นา ถ่ายขยะของจริงมาให้ดูหน่อย";
-            combo = 0;
+            gameMessage.innerText = "นี่ไม่ใช่ขยะนี่นา! อย่าแกล้งฉันสิ โดนหัก 5 แต้ม";
+            score -= 5;
             sfx.error();
             mascot.classList.add("shake"); setTimeout(() => mascot.classList.remove("shake"), 500);
-            comboBadge.classList.add("hidden");
-        } else {
-            // ระบบนับคอมโบ
-            combo++;
-            if (combo >= 2) {
-                earnedPoints *= 2;
-                comboBadge.classList.remove("hidden");
-            } else {
-                comboBadge.classList.add("hidden");
-            }
             
-            score += earnedPoints;
-            scoreDisplay.innerText = score;
+        } else if (aiAnswer.includes(currentMission.id)) {
+            // 🟢 ตอบถูก! (+10 แต้ม)
+            score += 10;
             sfx.coin();
-
-            // เปลี่ยนสีและข้อความตามประเภทขยะ
-            if (aiAnswer.includes("recycle")) {
-                mascot.innerText = "♻️🤩";
-                gameMessage.innerText = `ยอดเยี่ยม! นี่คือ ขยะรีไซเคิล (+${earnedPoints} แต้ม)`;
-                gameContainer.classList.add("bg-recycle");
-            } else if (aiAnswer.includes("organic")) {
-                mascot.innerText = "🍂😋";
-                gameMessage.innerText = `ดีมาก! นี่คือ ขยะอินทรีย์ (+${earnedPoints} แต้ม)`;
-                gameContainer.classList.add("bg-organic");
-            } else if (aiAnswer.includes("hazardous")) {
-                mascot.innerText = "☠️😱";
-                gameMessage.innerText = `ระวัง! นี่คือ ขยะอันตราย ต้องทิ้งแยกนะ (+${earnedPoints} แต้ม)`;
-                gameContainer.classList.add("bg-hazardous");
-                sfx.error(); 
-            } else if (aiAnswer.includes("general")) {
-                mascot.innerText = "🗑️👍";
-                gameMessage.innerText = `เยี่ยม! นี่คือ ขยะทั่วไป ทิ้งลงถังเลย (+${earnedPoints} แต้ม)`;
-                gameContainer.classList.add("bg-general");
-            } else {
-                mascot.innerText = "😵‍💫";
-                gameMessage.innerText = `ระบบไม่แน่ใจ ลองถ่ายใหม่อีกครั้งนะ`;
-            }
-
-            scoreDisplay.classList.add("bounce");
-            setTimeout(() => scoreDisplay.classList.remove("bounce"), 1000);
+            mascot.innerText = "🤩✅";
+            gameMessage.innerText = `เก่งมาก! นี่คือ ${currentMission.name} ถูกต้องตามภารกิจ รับไปเลย +10 แต้ม`;
+            gameContainer.className = "game-container bg-" + currentMission.id;
+            
+        } else {
+            // 🔴 ตอบผิดประเภท! (-5 แต้ม)
+            score -= 5;
+            sfx.error();
+            mascot.innerText = "❌😱";
+            
+            // แปลงคำตอบ AI ให้เป็นภาษาไทยเพื่อบอกเด็กๆ ว่าที่ถ่ายมาคืออะไร
+            let wrongTypeStr = "ขยะประเภทอื่น";
+            if(aiAnswer.includes("recycle")) wrongTypeStr = "ขยะรีไซเคิล";
+            else if(aiAnswer.includes("organic")) wrongTypeStr = "ขยะอินทรีย์";
+            else if(aiAnswer.includes("hazardous")) wrongTypeStr = "ขยะอันตราย";
+            else if(aiAnswer.includes("general")) wrongTypeStr = "ขยะทั่วไป";
+            
+            gameMessage.innerText = `ผิดประเภทนะ! นี่มันคือ ${wrongTypeStr} ไม่ใช่ ${currentMission.name} ซะหน่อย! โดนหัก 5 แต้ม`;
+            gameContainer.className = "game-container bg-danger";
+            mascot.classList.add("shake"); setTimeout(() => mascot.classList.remove("shake"), 500);
         }
-        statusDiv.innerHTML = "ภารกิจสำเร็จ! สแกนชิ้นต่อไปได้เลย";
+
+        // อัปเดตคะแนน
+        scoreDisplay.innerText = score;
+        scoreDisplay.classList.add("bounce");
+        setTimeout(() => scoreDisplay.classList.remove("bounce"), 1000);
+
+        // เช็คว่าชนะหรือยัง
+        if (score >= 50) {
+            triggerWinGame();
+        } else {
+            // ถ้ายังไม่ชนะ คืนปุ่มให้ผู้เล่น และรอ 3 วินาทีแล้วสั่งภารกิจใหม่
+            statusDiv.innerHTML = "รอดูภารกิจต่อไป...";
+            setTimeout(() => {
+                cameraBtn.classList.remove("hidden");
+                browseBtn.classList.remove("hidden");
+                gameContainer.className = "game-container";
+                setNewMission();
+            }, 3500); // ให้เวลาเด็กอ่านข้อความ 3.5 วินาที
+        }
 
     } catch (error) {
         console.error("Error:", error);
-        statusDiv.innerHTML = "❌ การเชื่อมต่อล้มเหลว (ขัดข้องที่เซิร์ฟเวอร์)";
-        mascot.innerText = "😵";
-        gameMessage.innerText = `ระบบขัดข้อง โปรดลองใหม่`;
-        sfx.error();
+        statusDiv.innerHTML = "❌ การเชื่อมต่อล้มเหลว ลองถ่ายรูปใหม่อีกครั้ง";
+        cameraBtn.classList.remove("hidden");
+        browseBtn.classList.remove("hidden");
     }
 }
 
-// Event Listeners สำหรับปุ่มต่างๆ
+// Event Listeners
+startGameBtn.addEventListener("click", startGame);
+restartBtn.addEventListener("click", startGame);
+
+document.getElementById("camera-btn").addEventListener("click", () => { sfx.click(); startCamera(); });
+document.getElementById("browse-btn").addEventListener("click", () => { sfx.click(); imageUpload.click(); });
+
 document.getElementById("switch-camera-btn").addEventListener("click", () => {
-    sfx.click();
-    currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user';
-    startCamera();
+    sfx.click(); currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user'; startCamera();
 });
 
 document.getElementById("close-camera-btn").addEventListener("click", () => {
     sfx.click();
     if (stream) stream.getTracks().forEach(track => track.stop());
     cameraContainer.style.display = 'none';
-    inputOptions.classList.remove("hidden");
+    cameraBtn.classList.remove("hidden"); browseBtn.classList.remove("hidden");
     statusDiv.innerHTML = "ยกเลิกกล้องแล้ว";
-    mascot.innerText = "🤖";
-    gameMessage.innerText = "พร้อมลุยภารกิจต่อไป!";
 });
 
 document.getElementById("capture-btn").addEventListener("click", captureImage);
@@ -216,12 +252,8 @@ imageUpload.addEventListener("change", (event) => {
             imagePreview.src = e.target.result;
             imagePreview.style.display = 'block';
             cameraContainer.style.display = 'none';
-            inputOptions.classList.remove("hidden");
             predict(); 
         };
         reader.readAsDataURL(event.target.files[0]);
     }
 });
-
-// รันโปรแกรมทันที
-init();
