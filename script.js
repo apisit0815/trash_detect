@@ -1,4 +1,4 @@
-// 🚨 สำคัญมาก: นำ Web App URL ของ Google Apps Script มาใส่ที่นี่
+// 🚨 สำคัญมาก: นำ Web App URL ของ Google Apps Script มาใส่ในเครื่องหมายคำพูดด้านล่าง
 const GAS_WEB_APP_URL = "https://script.google.com/macros/s/AKfycbx1pdHOY5ubDDb-FSj3FuOIyOgRlRUloRKH_TCDQjxn85EUtizkwuIWI-BGa-IeWau0ZQ/exec";
 
 let stream;
@@ -25,7 +25,6 @@ const imagePreview = document.getElementById("image-preview");
 const cameraContainer = document.getElementById("camera-container");
 const videoPreview = document.getElementById("video-preview");
 
-// ปุ่มควบคุม
 const startGameBtn = document.getElementById("start-game-btn");
 const cameraBtn = document.getElementById("camera-btn");
 const browseBtn = document.getElementById("browse-btn");
@@ -38,8 +37,10 @@ function playTone(freq, type, duration, vol=0.1) {
     if(audioCtx.state === 'suspended') audioCtx.resume();
     const osc = audioCtx.createOscillator();
     const gain = audioCtx.createGain();
-    osc.type = type; osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-    osc.connect(gain); gain.connect(audioCtx.destination);
+    osc.type = type; 
+    osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+    osc.connect(gain); 
+    gain.connect(audioCtx.destination);
     osc.start();
     gain.gain.setValueAtTime(vol, audioCtx.currentTime);
     gain.gain.exponentialRampToValueAtTime(0.00001, audioCtx.currentTime + duration);
@@ -47,12 +48,12 @@ function playTone(freq, type, duration, vol=0.1) {
 }
 
 const sfx = {
-    start: () => { playTone(440, 'square', 0.1); setTimeout(() => playTone(660, 'square', 0.2), 150); }, // เสียงเริ่มเกม
-    coin: () => { playTone(1200, 'sine', 0.1); setTimeout(() => playTone(1600, 'sine', 0.3), 100); }, // เสียงตอบถูก
-    error: () => { playTone(300, 'sawtooth', 0.2); setTimeout(() => playTone(200, 'sawtooth', 0.4), 150); }, // เสียงตอบผิด
+    start: () => { playTone(440, 'square', 0.1); setTimeout(() => playTone(660, 'square', 0.2), 150); }, 
+    coin: () => { playTone(1200, 'sine', 0.1); setTimeout(() => playTone(1600, 'sine', 0.3), 100); }, 
+    error: () => { playTone(300, 'sawtooth', 0.2); setTimeout(() => playTone(200, 'sawtooth', 0.4), 150); }, 
     shutter: () => { playTone(800, 'square', 0.05); },
     click: () => { playTone(600, 'sine', 0.05); },
-    win: () => { // เสียงชนะเกม
+    win: () => { 
         playTone(523.25, 'sine', 0.1); setTimeout(() => playTone(659.25, 'sine', 0.1), 100);
         setTimeout(() => playTone(783.99, 'sine', 0.1), 200); setTimeout(() => playTone(1046.50, 'sine', 0.4), 300);
     }
@@ -97,7 +98,7 @@ function triggerWinGame() {
     
     cameraBtn.classList.add("hidden");
     browseBtn.classList.add("hidden");
-    restartBtn.classList.remove("hidden"); // โชว์ปุ่มเล่นใหม่
+    restartBtn.classList.remove("hidden"); 
 }
 
 // ระบบกล้อง
@@ -108,7 +109,8 @@ async function startCamera() {
     try {
         stream = await navigator.mediaDevices.getUserMedia(constraints);
         videoPreview.srcObject = stream;
-        cameraBtn.classList.add("hidden"); browseBtn.classList.add("hidden");
+        cameraBtn.classList.add("hidden"); 
+        browseBtn.classList.add("hidden");
         imagePreview.style.display = 'none';
         cameraContainer.style.display = 'flex';
         statusDiv.innerHTML = "เล็งขยะให้ตรงกลางเป้าหมาย!";
@@ -140,10 +142,12 @@ function captureImage() {
     predict(); 
 }
 
-// 🧠 ส่งรูปไปให้ Backend ตรวจสอบความถูกต้อง
+// 🧠 ส่งรูปไปให้ Backend ตรวจสอบ
 async function predict() {
-    if (GAS_WEB_APP_URL.includes("ใส่_URL")) {
-        alert("❌ ลืมใส่ URL ของ Google Apps Script ในไฟล์ script.js ครับ"); return;
+    if (GAS_WEB_APP_URL.includes("ใส่_URL") || GAS_WEB_APP_URL === "") {
+        alert("❌ ลืมใส่ URL ของ Google Apps Script ในไฟล์ script.js ครับ");
+        cameraBtn.classList.remove("hidden"); browseBtn.classList.remove("hidden");
+        return;
     }
 
     statusDiv.innerHTML = "📡 กำลังให้ AI ตรวจสอบว่าตรงกับภารกิจไหม...";
@@ -164,12 +168,12 @@ async function predict() {
         
         // ⚖️ กติกาเกม: เช็คว่าคำตอบ AI ตรงกับภารกิจหรือไม่
         if (aiAnswer.includes("null")) {
-            // ไม่ใช่ขยะ
             mascot.innerText = "❓";
             gameMessage.innerText = "นี่ไม่ใช่ขยะนี่นา! อย่าแกล้งฉันสิ โดนหัก 5 แต้ม";
             score -= 5;
             sfx.error();
-            mascot.classList.add("shake"); setTimeout(() => mascot.classList.remove("shake"), 500);
+            mascot.classList.add("shake"); 
+            setTimeout(() => mascot.classList.remove("shake"), 500);
             
         } else if (aiAnswer.includes(currentMission.id)) {
             // 🟢 ตอบถูก! (+10 แต้ม)
@@ -185,7 +189,6 @@ async function predict() {
             sfx.error();
             mascot.innerText = "❌😱";
             
-            // แปลงคำตอบ AI ให้เป็นภาษาไทยเพื่อบอกเด็กๆ ว่าที่ถ่ายมาคืออะไร
             let wrongTypeStr = "ขยะประเภทอื่น";
             if(aiAnswer.includes("recycle")) wrongTypeStr = "ขยะรีไซเคิล";
             else if(aiAnswer.includes("organic")) wrongTypeStr = "ขยะอินทรีย์";
@@ -194,26 +197,25 @@ async function predict() {
             
             gameMessage.innerText = `ผิดประเภทนะ! นี่มันคือ ${wrongTypeStr} ไม่ใช่ ${currentMission.name} ซะหน่อย! โดนหัก 5 แต้ม`;
             gameContainer.className = "game-container bg-danger";
-            mascot.classList.add("shake"); setTimeout(() => mascot.classList.remove("shake"), 500);
+            mascot.classList.add("shake"); 
+            setTimeout(() => mascot.classList.remove("shake"), 500);
         }
 
-        // อัปเดตคะแนน
         scoreDisplay.innerText = score;
         scoreDisplay.classList.add("bounce");
         setTimeout(() => scoreDisplay.classList.remove("bounce"), 1000);
 
-        // เช็คว่าชนะหรือยัง
+        // เช็คคะแนนชนะ
         if (score >= 50) {
             triggerWinGame();
         } else {
-            // ถ้ายังไม่ชนะ คืนปุ่มให้ผู้เล่น และรอ 3 วินาทีแล้วสั่งภารกิจใหม่
             statusDiv.innerHTML = "รอดูภารกิจต่อไป...";
             setTimeout(() => {
                 cameraBtn.classList.remove("hidden");
                 browseBtn.classList.remove("hidden");
                 gameContainer.className = "game-container";
                 setNewMission();
-            }, 3500); // ให้เวลาเด็กอ่านข้อความ 3.5 วินาที
+            }, 3500); 
         }
 
     } catch (error) {
@@ -232,14 +234,17 @@ document.getElementById("camera-btn").addEventListener("click", () => { sfx.clic
 document.getElementById("browse-btn").addEventListener("click", () => { sfx.click(); imageUpload.click(); });
 
 document.getElementById("switch-camera-btn").addEventListener("click", () => {
-    sfx.click(); currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user'; startCamera();
+    sfx.click(); 
+    currentFacingMode = (currentFacingMode === 'user') ? 'environment' : 'user'; 
+    startCamera();
 });
 
 document.getElementById("close-camera-btn").addEventListener("click", () => {
     sfx.click();
     if (stream) stream.getTracks().forEach(track => track.stop());
     cameraContainer.style.display = 'none';
-    cameraBtn.classList.remove("hidden"); browseBtn.classList.remove("hidden");
+    cameraBtn.classList.remove("hidden"); 
+    browseBtn.classList.remove("hidden");
     statusDiv.innerHTML = "ยกเลิกกล้องแล้ว";
 });
 
